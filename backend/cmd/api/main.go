@@ -2,11 +2,13 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
 
+	"github.com/Natti3588/go-StudyLog/backend/internal/handler"
+	"github.com/Natti3588/go-StudyLog/backend/internal/repository"
+	"github.com/Natti3588/go-StudyLog/backend/internal/service"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 )
@@ -29,12 +31,22 @@ func main() {
 	}
 	slog.Info("connected to database")
 
+	categoryHandler := handler.NewCategoryHandler(
+		service.NewCategoryService(repository.NewCategoryRepository(db)),
+	)
+	studyLogHandler := handler.NewStudyLogHandler(
+		service.NewStudyLogService(repository.NewStudyLogRepository(db)),
+	)
+
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /logs", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]any{})
-	})
+	mux.HandleFunc("GET /categories", categoryHandler.List)
+	mux.HandleFunc("POST /categories", categoryHandler.Create)
+
+	mux.HandleFunc("GET /logs", studyLogHandler.List)
+	mux.HandleFunc("POST /logs", studyLogHandler.Create)
+	mux.HandleFunc("PUT /logs/{id}", studyLogHandler.Update)
+	mux.HandleFunc("DELETE /logs/{id}", studyLogHandler.Delete)
 
 	slog.Info("starting server", "port", 8080)
 	if err := http.ListenAndServe(":8080", mux); err != nil {
