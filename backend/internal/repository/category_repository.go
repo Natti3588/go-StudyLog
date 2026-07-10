@@ -16,18 +16,22 @@ func NewCategoryRepository(db *sql.DB) *CategoryRepository {
 }
 
 func (r *CategoryRepository) FindAll(ctx context.Context, userID string) ([]domain.Category, error) {
+	var uid *string
+	if userID != "" {
+		uid = &userID
+	}
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, name, created_at
 		FROM categories
 		WHERE user_id IS NULL OR user_id = $1
 		ORDER BY created_at
-		`, userID)
+		`, uid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var categories []domain.Category
+	categories := []domain.Category{}
 	for rows.Next() {
 		var c domain.Category
 		if err := rows.Scan(&c.ID, &c.UserID, &c.Name, &c.CreatedAt); err != nil {

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 )
@@ -27,7 +28,7 @@ func (r *StudyLogRepository) FindAll(ctx context.Context, userID string) ([]doma
 	}
 	defer rows.Close()
 
-	var logs []domain.StudyLog
+	logs := []domain.StudyLog{}
 	for rows.Next() {
 		var l domain.StudyLog
 		if err := rows.Scan(&l.ID, &l.UserID, &l.CategoryID, &l.StudiedOn, &l.DurationMin, &l.Memo, &l.CreatedAt, &l.UpdatedAt); err != nil {
@@ -47,20 +48,17 @@ func (r *StudyLogRepository) Create(ctx context.Context, l *domain.StudyLog) err
 }
 
 func (r *StudyLogRepository) Update(ctx context.Context, l *domain.StudyLog) error {
-	res, err := r.db.ExecContext(ctx, `
+	err := r.db.QueryRowContext(ctx, `
 		UPDATE study_logs
 		SET category_id = $1, studied_on = $2, duration_min = $3, memo = $4, updated_at = now()
 		WHERE id = $5 AND user_id = $6
-		`, l.CategoryID, l.StudiedOn, l.DurationMin, l.Memo, l.ID, l.UserID)
+		RETURNING created_at, updated_at
+		`, l.CategoryID, l.StudiedOn, l.DurationMin, l.Memo, l.ID, l.UserID).Scan(&l.CreatedAt, &l.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.ErrStudyLogNotFound
+		}
 		return err
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return domain.ErrStudyLogNotFound
 	}
 	return nil
 }
