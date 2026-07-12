@@ -15,7 +15,6 @@ type StudyLogHandler struct {
 }
 
 type StudyLogRequest struct {
-	UserID      string    `json:"user_id"`
 	CategoryID  string    `json:"category_id"`
 	StudiedOn   time.Time `json:"studied_on"`
 	DurationMin int       `json:"duration_min"`
@@ -27,7 +26,7 @@ func NewStudyLogHandler(s *service.StudyLogService) *StudyLogHandler {
 }
 
 func (h *StudyLogHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
+	userID := UserIDFromContext(r.Context())
 
 	logs, err := h.service.List(r.Context(), userID)
 	if err != nil {
@@ -45,11 +44,12 @@ func (h *StudyLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if req.UserID == "" || req.CategoryID == "" || req.DurationMin <= 0 {
+	if req.CategoryID == "" || req.DurationMin <= 0 {
 		http.Error(w, "category_id and a positive duration_min are required", http.StatusBadRequest)
 		return
 	}
-	l, err := h.service.Create(r.Context(), req.UserID, service.StudyLogInput{
+	userID := UserIDFromContext(r.Context())
+	l, err := h.service.Create(r.Context(), userID, service.StudyLogInput{
 		CategoryID:  req.CategoryID,
 		StudiedOn:   req.StudiedOn,
 		DurationMin: req.DurationMin,
@@ -67,6 +67,7 @@ func (h *StudyLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *StudyLogHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	userID := UserIDFromContext(r.Context())
 
 	var req StudyLogRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -74,7 +75,7 @@ func (h *StudyLogHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l, err := h.service.Update(r.Context(), id, req.UserID, service.StudyLogInput{
+	l, err := h.service.Update(r.Context(), id, userID, service.StudyLogInput{
 		CategoryID:  req.CategoryID,
 		StudiedOn:   req.StudiedOn,
 		DurationMin: req.DurationMin,
@@ -94,7 +95,7 @@ func (h *StudyLogHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *StudyLogHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	userID := r.URL.Query().Get("user_id")
+	userID := UserIDFromContext(r.Context())
 
 	if err := h.service.Delete(r.Context(), id, userID); err != nil {
 		if errors.Is(err, domain.ErrStudyLogNotFound) {

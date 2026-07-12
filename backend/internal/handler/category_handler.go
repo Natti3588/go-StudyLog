@@ -12,8 +12,7 @@ type CategoryHandler struct {
 }
 
 type CreateCategoryRequest struct {
-	UserID string `json:"user_id"`
-	Name   string `json:"name"`
+	Name string `json:"name"`
 }
 
 func NewCategoryHandler(s *service.CategoryService) *CategoryHandler {
@@ -21,7 +20,7 @@ func NewCategoryHandler(s *service.CategoryService) *CategoryHandler {
 }
 
 func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
+	userID := UserIDFromContext(r.Context())
 
 	categories, err := h.service.List(r.Context(), userID)
 	if err != nil {
@@ -43,7 +42,8 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name is required", http.StatusBadRequest)
 		return
 	}
-	c, err := h.service.Create(r.Context(), req.UserID, req.Name)
+	userID := UserIDFromContext(r.Context())
+	c, err := h.service.Create(r.Context(), userID, req.Name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
