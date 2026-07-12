@@ -7,7 +7,7 @@ import (
 	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 )
 
-type StudyLogRepository interface {
+type StudyLogRepo interface {
 	FindAll(ctx context.Context, userID string) ([]domain.StudyLog, error)
 	Create(ctx context.Context, l *domain.StudyLog) error
 	Update(ctx context.Context, l *domain.StudyLog) error
@@ -15,7 +15,7 @@ type StudyLogRepository interface {
 }
 
 type StudyLogService struct {
-	repo StudyLogRepository
+	repo StudyLogRepo
 }
 
 type StudyLogInput struct {
@@ -25,7 +25,7 @@ type StudyLogInput struct {
 	Memo        string
 }
 
-func NewStudyLogService(repo StudyLogRepository) *StudyLogService {
+func NewStudyLogService(repo StudyLogRepo) *StudyLogService {
 	return &StudyLogService{repo: repo}
 }
 
