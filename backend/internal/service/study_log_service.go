@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
@@ -12,10 +13,25 @@ type StudyLogRepo interface {
 	Create(ctx context.Context, l *domain.StudyLog) error
 	Update(ctx context.Context, l *domain.StudyLog) error
 	Delete(ctx context.Context, id, userID string) error
+	CreateTx(ctx context.Context, tx *sql.Tx, l *domain.StudyLog) error
+	FindAllByUserTx(ctx context.Context, tx *sql.Tx, userID string) ([]domain.StudyLog, error)
+	UpdateTx(ctx context.Context, tx *sql.Tx, l *domain.StudyLog) error
+	DeleteTx(ctx context.Context, tx *sql.Tx, id, userID string) error
+}
+
+type UserStatsRepo interface {
+	LockForUpdate(ctx context.Context, tx *sql.Tx, userID string) (*domain.UserStats, error)
+	Save(ctx context.Context, tx *sql.Tx, s *domain.UserStats) error
+}
+
+type TxBeginner interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
 type StudyLogService struct {
-	repo StudyLogRepo
+	repo      StudyLogRepo
+	statsRepo UserStatsRepo
+	db        TxBeginner
 }
 
 type StudyLogInput struct {
@@ -25,8 +41,8 @@ type StudyLogInput struct {
 	Memo        string
 }
 
-func NewStudyLogService(repo StudyLogRepo) *StudyLogService {
-	return &StudyLogService{repo: repo}
+func NewStudyLogService(repo StudyLogRepo, statsRepo UserStatsRepo, db TxBeginner) *StudyLogService {
+	return &StudyLogService{repo: repo, statsRepo: statsRepo, db: db}
 }
 
 func (s *StudyLogService) List(ctx context.Context, userID string) ([]domain.StudyLog, error) {
@@ -34,6 +50,21 @@ func (s *StudyLogService) List(ctx context.Context, userID string) ([]domain.Stu
 }
 
 func (s *StudyLogService) Create(ctx context.Context, userID string, in StudyLogInput) (*domain.StudyLog, error) {
+	if in.StudiedOn.After(time.Now()) {
+		return nil, domain.ErrInvalidStudiedOn
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	stats, err := s.statsRepo.LockForUpdate(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	l := &domain.StudyLog{
 		UserID:      userID,
 		CategoryID:  in.CategoryID,
@@ -41,13 +72,42 @@ func (s *StudyLogService) Create(ctx context.Context, userID string, in StudyLog
 		DurationMin: in.DurationMin,
 		Memo:        in.Memo,
 	}
-	if err := s.repo.Create(ctx, l); err != nil {
+	if err := s.repo.CreateTx(ctx, tx, l); err != nil {
+		return nil, err
+	}
+
+	if stats.LastStudiedOn != nil && in.StudiedOn.Before(*stats.LastStudiedOn) {
+		logs, err := s.repo.FindAllByUserTx(ctx, tx, userID)
+		if err != nil {
+			return nil, err
+		}
+		recomputeStats(stats, logs)
+	} else {
+		applyStreakForNewLog(stats, in.StudiedOn)
+		stats.TotalMin += in.DurationMin
+	}
+
+	if err := s.statsRepo.Save(ctx, tx, stats); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return l, nil
 }
 
 func (s *StudyLogService) Update(ctx context.Context, id, userID string, in StudyLogInput) (*domain.StudyLog, error) {
+	if in.StudiedOn.After(time.Now()) {
+		return nil, domain.ErrInvalidStudiedOn
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
 	l := &domain.StudyLog{
 		ID:          id,
 		UserID:      userID,
@@ -56,14 +116,57 @@ func (s *StudyLogService) Update(ctx context.Context, id, userID string, in Stud
 		DurationMin: in.DurationMin,
 		Memo:        in.Memo,
 	}
-	if err := s.repo.Update(ctx, l); err != nil {
+	if err := s.repo.UpdateTx(ctx, tx, l); err != nil {
 		return nil, err
 	}
+
+	stats, err := s.statsRepo.LockForUpdate(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+	logs, err := s.repo.FindAllByUserTx(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+	recomputeStats(stats, logs)
+
+	if err := s.statsRepo.Save(ctx, tx, stats); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
 	return l, nil
 }
 
 func (s *StudyLogService) Delete(ctx context.Context, id, userID string) error {
-	return s.repo.Delete(ctx, id, userID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := s.repo.DeleteTx(ctx, tx, id, userID); err != nil {
+		return err
+	}
+
+	stats, err := s.statsRepo.LockForUpdate(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
+	logs, err := s.repo.FindAllByUserTx(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
+	recomputeStats(stats, logs)
+
+	if err := s.statsRepo.Save(ctx, tx, stats); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func daysBetween(a, b time.Time) int {
