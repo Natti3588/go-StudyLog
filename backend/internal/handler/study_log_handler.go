@@ -56,6 +56,11 @@ func (h *StudyLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Memo:        req.Memo,
 	})
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidStudiedOn) {
+			http.Error(w, "studied_on cannot be in the future", http.StatusBadRequest)
+			return
+		}
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -82,6 +87,10 @@ func (h *StudyLogHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Memo:        req.Memo,
 	})
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidStudiedOn) {
+			http.Error(w, "studied_on cannot be in the future", http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, domain.ErrStudyLogNotFound) {
 			http.Error(w, "study log not found", http.StatusNotFound)
 			return
