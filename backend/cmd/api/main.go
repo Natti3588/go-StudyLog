@@ -42,7 +42,10 @@ func main() {
 		service.NewCategoryService(repository.NewCategoryRepository(db)),
 	)
 	studyLogHandler := handler.NewStudyLogHandler(
-		service.NewStudyLogService(repository.NewStudyLogRepository(db)),
+		service.NewStudyLogService(
+			repository.NewStudyLogRepository(db),
+			repository.NewUserStatsRepository(),
+			db),
 	)
 
 	requireAuth := handler.RequireAuth(jwtSecret)

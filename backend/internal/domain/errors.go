@@ -8,4 +8,5 @@ var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrCategoryNotFound   = errors.New("category not found")
 	ErrStudyLogNotFound   = errors.New("study log not found")
+	ErrInvalidStudiedOn   = errors.New("studied_on cannot be in the future")
 )
