@@ -142,3 +142,27 @@ func (r *StudyLogRepository) DeleteTx(ctx context.Context, tx *sql.Tx, id, userI
 	}
 	return nil
 }
+
+func (r *StudyLogRepository) FindDailyTotals(ctx context.Context, userID string, year int) ([]domain.DailyTotal, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT studied_on, SUM(duration_min)
+		FROM study_logs
+		WHERE user_id = $1 AND EXTRACT(YEAR FROM studied_on) = $2
+		GROUP BY studied_on
+		ORDER BY studied_on
+		`, userID, year)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	totals := []domain.DailyTotal{}
+	for rows.Next() {
+		var t domain.DailyTotal
+		if err := rows.Scan(&t.Date, &t.TotalMin); err != nil {
+			return nil, err
+		}
+		totals = append(totals, t)
+	}
+	return totals, rows.Err()
+}
