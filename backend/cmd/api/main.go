@@ -44,7 +44,7 @@ func main() {
 	studyLogHandler := handler.NewStudyLogHandler(
 		service.NewStudyLogService(
 			repository.NewStudyLogRepository(db),
-			repository.NewUserStatsRepository(),
+			repository.NewUserStatsRepository(db),
 			db),
 	)
 
