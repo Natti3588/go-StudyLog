@@ -10,4 +10,5 @@ var (
 	ErrStudyLogNotFound   = errors.New("study log not found")
 	ErrInvalidStudiedOn   = errors.New("studied_on cannot be in the future")
 	ErrWeeklyGoalNotFound = errors.New("weekly goal not found")
+	ErrUserStatsNotFound  = errors.New("user stats not found")
 )
