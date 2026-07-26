@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 )
@@ -165,4 +166,17 @@ func (r *StudyLogRepository) FindDailyTotals(ctx context.Context, userID string,
 		totals = append(totals, t)
 	}
 	return totals, rows.Err()
+}
+
+func (r *StudyLogRepository) SumDurationInRange(ctx context.Context, userID string, from, to time.Time) (int, error) {
+	var total sql.NullInt64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT SUM(duration_min)
+		FROM study_logs
+		WHERE user_id = $1 AND studied_on >= $2 AND studied_on < $3
+		`, userID, from, to).Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+	return int(total.Int64), nil
 }
