@@ -3,14 +3,33 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 )
 
-type UserStatsRepository struct{}
+type UserStatsRepository struct {
+	db *sql.DB
+}
 
-func NewUserStatsRepository() *UserStatsRepository {
-	return &UserStatsRepository{}
+func NewUserStatsRepository(db *sql.DB) *UserStatsRepository {
+	return &UserStatsRepository{db: db}
+}
+
+func (r *UserStatsRepository) FindByUserID(ctx context.Context, userID string) (*domain.UserStats, error) {
+	var s domain.UserStats
+	err := r.db.QueryRowContext(ctx, `
+		SELECT user_id, total_min, current_streak, longest_streak, last_studied_on, updated_at
+		FROM user_stats
+		WHERE user_id = $1
+		`, userID).Scan(&s.UserID, &s.TotalMin, &s.CurrentStreak, &s.LongestStreak, &s.LastStudiedOn, &s.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrUserStatsNotFound
+		}
+		return nil, err
+	}
+	return &s, nil
 }
 
 func (r *UserStatsRepository) LockForUpdate(ctx context.Context, tx *sql.Tx, userID string) (*domain.UserStats, error) {

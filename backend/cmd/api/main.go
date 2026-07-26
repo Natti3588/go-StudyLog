@@ -44,8 +44,20 @@ func main() {
 	studyLogHandler := handler.NewStudyLogHandler(
 		service.NewStudyLogService(
 			repository.NewStudyLogRepository(db),
-			repository.NewUserStatsRepository(),
+			repository.NewUserStatsRepository(db),
 			db),
+	)
+	weeklyGoalHandler := handler.NewWeeklyGoalHandler(
+		service.NewWeeklyGoalService(
+			repository.NewWeeklyGoalRepository(db),
+		),
+	)
+	statsHandler := handler.NewStatsHandler(
+		service.NewStatsService(
+			repository.NewStudyLogRepository(db),
+			repository.NewUserStatsRepository(db),
+			repository.NewWeeklyGoalRepository(db),
+		),
 	)
 
 	requireAuth := handler.RequireAuth(jwtSecret)
@@ -63,6 +75,10 @@ func main() {
 	mux.HandleFunc("POST /logs", requireAuth(studyLogHandler.Create))
 	mux.HandleFunc("PUT /logs/{id}", requireAuth(studyLogHandler.Update))
 	mux.HandleFunc("DELETE /logs/{id}", requireAuth(studyLogHandler.Delete))
+
+	mux.HandleFunc("PUT /goals/weekly", requireAuth(weeklyGoalHandler.SetWeekly))
+	mux.HandleFunc("GET /stats/summary", requireAuth(statsHandler.Summary))
+	mux.HandleFunc("GET /stats/heatmap", requireAuth(statsHandler.Heatmap))
 
 	slog.Info("starting server", "port", 8080)
 	if err := http.ListenAndServe(":8080", mux); err != nil {

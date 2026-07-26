@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 )
@@ -141,4 +142,41 @@ func (r *StudyLogRepository) DeleteTx(ctx context.Context, tx *sql.Tx, id, userI
 		return domain.ErrStudyLogNotFound
 	}
 	return nil
+}
+
+func (r *StudyLogRepository) FindDailyTotals(ctx context.Context, userID string, year int) ([]domain.DailyTotal, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT studied_on, SUM(duration_min)
+		FROM study_logs
+		WHERE user_id = $1 AND EXTRACT(YEAR FROM studied_on) = $2
+		GROUP BY studied_on
+		ORDER BY studied_on
+		`, userID, year)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	totals := []domain.DailyTotal{}
+	for rows.Next() {
+		var t domain.DailyTotal
+		if err := rows.Scan(&t.Date, &t.TotalMin); err != nil {
+			return nil, err
+		}
+		totals = append(totals, t)
+	}
+	return totals, rows.Err()
+}
+
+func (r *StudyLogRepository) SumDurationInRange(ctx context.Context, userID string, from, to time.Time) (int, error) {
+	var total sql.NullInt64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT SUM(duration_min)
+		FROM study_logs
+		WHERE user_id = $1 AND studied_on >= $2 AND studied_on < $3
+		`, userID, from, to).Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+	return int(total.Int64), nil
 }
