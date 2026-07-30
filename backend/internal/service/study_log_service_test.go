@@ -127,3 +127,93 @@ func TestApplyStreakForNewLog(t *testing.T) {
 		})
 	}
 }
+
+func TestRecomputeStats(t *testing.T) {
+	tests := []struct {
+		name              string
+		logs              []domain.StudyLog
+		wantTotalMin      int
+		wantCurrentStreak int
+		wantLongestStreak int
+		wantLastStudiedOn *time.Time
+	}{
+		{
+			name:              "ログが0件",
+			logs:              []domain.StudyLog{},
+			wantTotalMin:      0,
+			wantCurrentStreak: 0,
+			wantLongestStreak: 0,
+			wantLastStudiedOn: nil,
+		},
+		{
+			name: "1件のみ",
+			logs: []domain.StudyLog{
+				{StudiedOn: day(2026, 7, 10), DurationMin: 20},
+			},
+			wantTotalMin:      20,
+			wantCurrentStreak: 1,
+			wantLongestStreak: 1,
+			wantLastStudiedOn: ptr(day(2026, 7, 10)),
+		},
+		{
+			name: "同日に複数件は合計されるがstreakは1のまま",
+			logs: []domain.StudyLog{
+				{StudiedOn: day(2026, 7, 10), DurationMin: 20},
+				{StudiedOn: day(2026, 7, 10), DurationMin: 15},
+			},
+			wantTotalMin:      35,
+			wantCurrentStreak: 1,
+			wantLongestStreak: 1,
+			wantLastStudiedOn: ptr(day(2026, 7, 10)),
+		},
+		{
+			name: "連続3日でstreakが伸びる",
+			logs: []domain.StudyLog{
+				{StudiedOn: day(2026, 7, 10), DurationMin: 20},
+				{StudiedOn: day(2026, 7, 11), DurationMin: 20},
+				{StudiedOn: day(2026, 7, 12), DurationMin: 20},
+			},
+			wantTotalMin:      60,
+			wantCurrentStreak: 3,
+			wantLongestStreak: 3,
+			wantLastStudiedOn: ptr(day(2026, 7, 12)),
+		},
+		{
+			name: "空きの後、longestは前半の記録が残りcurrentは末尾基準",
+			logs: []domain.StudyLog{
+				{StudiedOn: day(2026, 7, 10), DurationMin: 20},
+				{StudiedOn: day(2026, 7, 11), DurationMin: 20},
+				{StudiedOn: day(2026, 7, 12), DurationMin: 20},
+				{StudiedOn: day(2026, 7, 14), DurationMin: 15},
+			},
+			wantTotalMin:      75,
+			wantCurrentStreak: 1,
+			wantLongestStreak: 3,
+			wantLastStudiedOn: ptr(day(2026, 7, 14)),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stats := &domain.UserStats{}
+			recomputeStats(stats, tt.logs)
+
+			if stats.TotalMin != tt.wantTotalMin {
+				t.Errorf("TotalMin = %d, want %d", stats.TotalMin, tt.wantTotalMin)
+			}
+			if stats.CurrentStreak != tt.wantCurrentStreak {
+				t.Errorf("CurrentStreak = %d, want %d", stats.CurrentStreak, tt.wantCurrentStreak)
+			}
+			if stats.LongestStreak != tt.wantLongestStreak {
+				t.Errorf("LongestStreak = %d, want %d", stats.LongestStreak, tt.wantLongestStreak)
+			}
+
+			switch {
+			case tt.wantLastStudiedOn == nil && stats.LastStudiedOn != nil:
+				t.Errorf("LastStudiedOn = %v, want nil", stats.LastStudiedOn)
+			case tt.wantLastStudiedOn != nil && (stats.LastStudiedOn == nil || !stats.LastStudiedOn.Equal(*tt.wantLastStudiedOn)):
+				t.Errorf("LastStudiedOn = %v, want %v", stats.LastStudiedOn, tt.wantLastStudiedOn)
+			}
+		})
+	}
+}
