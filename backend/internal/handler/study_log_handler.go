@@ -60,6 +60,10 @@ func (h *StudyLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "studied_on cannot be in the future", http.StatusBadRequest)
 			return
 		}
+		if errors.Is(err, domain.ErrCategoryNotFound) {
+			http.Error(w, "category_id does not exist", http.StatusBadRequest)
+			return
+		}
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -93,6 +97,10 @@ func (h *StudyLogHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, domain.ErrStudyLogNotFound) {
 			http.Error(w, "study log not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, domain.ErrCategoryNotFound) {
+			http.Error(w, "category_id does not exist", http.StatusBadRequest)
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
