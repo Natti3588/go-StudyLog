@@ -1,14 +1,20 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
+	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 	"github.com/Natti3588/go-StudyLog/backend/internal/service"
 )
 
+type categoryServicer interface {
+	List(ctx context.Context, userID string) ([]domain.Category, error)
+	Create(ctx context.Context, userID, name string) (*domain.Category, error)
+}
 type CategoryHandler struct {
-	service *service.CategoryService
+	service categoryServicer
 }
 
 type CreateCategoryRequest struct {
