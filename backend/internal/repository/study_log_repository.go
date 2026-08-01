@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type StudyLogRepository struct {
@@ -15,6 +16,11 @@ type StudyLogRepository struct {
 
 func NewStudyLogRepository(db *sql.DB) *StudyLogRepository {
 	return &StudyLogRepository{db: db}
+}
+
+func isCategoryFKViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
 }
 
 func (r *StudyLogRepository) FindAll(ctx context.Context, userID string) ([]domain.StudyLog, error) {
@@ -41,11 +47,18 @@ func (r *StudyLogRepository) FindAll(ctx context.Context, userID string) ([]doma
 }
 
 func (r *StudyLogRepository) Create(ctx context.Context, l *domain.StudyLog) error {
-	return r.db.QueryRowContext(ctx, `
+	err := r.db.QueryRowContext(ctx, `
 		INSERT INTO study_logs (user_id, category_id, studied_on, duration_min, memo)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at
 		`, l.UserID, l.CategoryID, l.StudiedOn, l.DurationMin, l.Memo).Scan(&l.ID, &l.CreatedAt, &l.UpdatedAt)
+	if err != nil {
+		if isCategoryFKViolation(err) {
+			return domain.ErrCategoryNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *StudyLogRepository) Update(ctx context.Context, l *domain.StudyLog) error {
@@ -58,6 +71,9 @@ func (r *StudyLogRepository) Update(ctx context.Context, l *domain.StudyLog) err
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.ErrStudyLogNotFound
+		}
+		if isCategoryFKViolation(err) {
+			return domain.ErrCategoryNotFound
 		}
 		return err
 	}
@@ -82,11 +98,18 @@ func (r *StudyLogRepository) Delete(ctx context.Context, id, userID string) erro
 }
 
 func (r *StudyLogRepository) CreateTx(ctx context.Context, tx *sql.Tx, l *domain.StudyLog) error {
-	return tx.QueryRowContext(ctx, `
+	err := tx.QueryRowContext(ctx, `
         INSERT INTO study_logs (user_id, category_id, studied_on, duration_min, memo)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id, created_at, updated_at
 		`, l.UserID, l.CategoryID, l.StudiedOn, l.DurationMin, l.Memo).Scan(&l.ID, &l.CreatedAt, &l.UpdatedAt)
+	if err != nil {
+		if isCategoryFKViolation(err) {
+			return domain.ErrCategoryNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *StudyLogRepository) FindAllByUserTx(ctx context.Context, tx *sql.Tx, userID string) ([]domain.StudyLog, error) {
@@ -122,6 +145,9 @@ func (r *StudyLogRepository) UpdateTx(ctx context.Context, tx *sql.Tx, l *domain
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.ErrStudyLogNotFound
+		}
+		if isCategoryFKViolation(err) {
+			return domain.ErrCategoryNotFound
 		}
 		return err
 	}
