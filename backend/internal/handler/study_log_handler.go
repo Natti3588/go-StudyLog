@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,8 +11,15 @@ import (
 	"github.com/Natti3588/go-StudyLog/backend/internal/service"
 )
 
+type studyLogServicer interface {
+	List(ctx context.Context, userID string) ([]domain.StudyLog, error)
+	Create(ctx context.Context, userID string, in service.StudyLogInput) (*domain.StudyLog, error)
+	Update(ctx context.Context, id, userID string, in service.StudyLogInput) (*domain.StudyLog, error)
+	Delete(ctx context.Context, id, userID string) error
+}
+
 type StudyLogHandler struct {
-	service *service.StudyLogService
+	service studyLogServicer
 }
 
 type StudyLogRequest struct {
