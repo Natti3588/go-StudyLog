@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,8 +10,12 @@ import (
 	"github.com/Natti3588/go-StudyLog/backend/internal/service"
 )
 
+type authServicer interface {
+	Signup(ctx context.Context, email, password string) (*domain.User, error)
+	Login(ctx context.Context, email, password string) (string, error)
+}
 type AuthHandler struct {
-	service      *service.AuthService
+	service      authServicer
 	secureCookie bool
 }
 
