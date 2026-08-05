@@ -1,15 +1,21 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
+	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 	"github.com/Natti3588/go-StudyLog/backend/internal/service"
 )
 
+type weeklyGoalServicer interface {
+	SetWeekly(ctx context.Context, userID string, weekStart time.Time, targetMin int) (*domain.WeeklyGoal, error)
+}
+
 type WeeklyGoalHandler struct {
-	service *service.WeeklyGoalService
+	service weeklyGoalServicer
 }
 
 type weeklyGoalRequest struct {
