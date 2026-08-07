@@ -1,15 +1,22 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 
+	"github.com/Natti3588/go-StudyLog/backend/internal/domain"
 	"github.com/Natti3588/go-StudyLog/backend/internal/service"
 )
 
+type statsServicer interface {
+	Summary(ctx context.Context, userID string) (*domain.StatsSummary, error)
+	Heatmap(ctx context.Context, userID string, year int) ([]domain.DailyTotal, error)
+}
+
 type StatsHandler struct {
-	service *service.StatsService
+	service statsServicer
 }
 
 func NewStatsHandler(s *service.StatsService) *StatsHandler {
