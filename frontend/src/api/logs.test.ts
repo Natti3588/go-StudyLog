@@ -26,20 +26,26 @@ describe('logs api', () => {
     expect(client.apiRequest).toHaveBeenCalledWith('/logs')
   })
 
-  it('createLogはPOST /logsを叩く', async () => {
+  it('createLogはPOST /logsを叩く(studied_onはRFC3339に変換)', async () => {
     vi.mocked(client.apiRequest).mockResolvedValue({ id: '1' })
 
     await createLog(sampleInput)
 
-    expect(client.apiRequest).toHaveBeenCalledWith('/logs', { method: 'POST', body: sampleInput })
+    expect(client.apiRequest).toHaveBeenCalledWith('/logs', {
+      method: 'POST',
+      body: { ...sampleInput, studied_on: '2026-08-09T00:00:00Z' },
+    })
   })
 
-  it('updateLogはPUT /logs/{id}を叩く', async () => {
+  it('updateLogはPUT /logs/{id}を叩く(studied_onはRFC3339に変換)', async () => {
     vi.mocked(client.apiRequest).mockResolvedValue({ id: '1' })
 
     await updateLog('1', sampleInput)
 
-    expect(client.apiRequest).toHaveBeenCalledWith('/logs/1', { method: 'PUT', body: sampleInput })
+    expect(client.apiRequest).toHaveBeenCalledWith('/logs/1', {
+      method: 'PUT',
+      body: { ...sampleInput, studied_on: '2026-08-09T00:00:00Z' },
+    })
   })
 
   it('deleteLogはDELETE /logs/{id}を叩く', async () => {
