@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User } from '../types/domain'
 import { me as fetchMe, login as apiLogin, logout as apiLogout } from '../api/auth'
+import { setUnauthorizedHandler } from '../api/client'
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -18,6 +19,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      setStatus('unauthenticated')
+    })
+
     fetchMe()
       .then((u) => {
         setUser(u)
@@ -26,6 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         setStatus('unauthenticated')
       })
+
+    return () => setUnauthorizedHandler(null)
   }, [])
 
   async function login(email: string, password: string) {

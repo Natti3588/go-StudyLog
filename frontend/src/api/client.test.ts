@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiRequest, ApiError } from './client'
+import { apiRequest, ApiError, setUnauthorizedHandler } from './client'
 
 describe('apiRequest', () => {
   beforeEach(() => {
@@ -59,5 +59,23 @@ describe('apiRequest', () => {
     const result = await apiRequest('/logs/1', { method: 'DELETE' })
 
     expect(result).toBeUndefined()
+  })
+
+  it('401時に登録されたunauthorizedHandlerを呼ぶ', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })))
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+
+    await expect(apiRequest('/logs')).rejects.toThrow(ApiError)
+
+    expect(handler).toHaveBeenCalledTimes(1)
+    setUnauthorizedHandler(null)
+  })
+
+  it('unauthorizedHandlerが未登録でも401で例外を投げるだけで済む', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })))
+    setUnauthorizedHandler(null)
+
+    await expect(apiRequest('/logs')).rejects.toMatchObject({ status: 401 })
   })
 })
