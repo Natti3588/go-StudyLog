@@ -32,6 +32,22 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain
 	return &u, nil
 }
 
+func (r *UserRepository) FindByID(ctx context.Context, id string) (*domain.User, error) {
+	var u domain.User
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, email, password_hash, is_admin, created_at
+		FROM users
+		WHERE id = $1
+		`, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.IsAdmin, &u.CreatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &u, nil
+}
+
 func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
 	return r.db.QueryRowContext(ctx, `
 		INSERT INTO users (email, password_hash)

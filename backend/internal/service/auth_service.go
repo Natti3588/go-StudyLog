@@ -12,6 +12,7 @@ import (
 
 type UserRepo interface {
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
+	FindByID(ctx context.Context, id string) (*domain.User, error)
 	Create(ctx context.Context, u *domain.User) error
 }
 
@@ -75,4 +76,8 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.jwtSecret)
+}
+
+func (s *AuthService) Me(ctx context.Context, userID string) (*domain.User, error) {
+	return s.repo.FindByID(ctx, userID)
 }
