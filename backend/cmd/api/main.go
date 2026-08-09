@@ -80,8 +80,9 @@ func main() {
 	mux.HandleFunc("GET /stats/summary", requireAuth(statsHandler.Summary))
 	mux.HandleFunc("GET /stats/heatmap", requireAuth(statsHandler.Heatmap))
 
+	corsMiddleware := handler.CORS("http://localhost:5173")
 	slog.Info("starting server", "port", 8080)
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe(":8080", corsMiddleware(mux)); err != nil {
 		slog.Error("server failed to start", "error", err)
 	}
 }
