@@ -43,4 +43,15 @@ describe('Sidebar', () => {
     expect(screen.getByText('ログ履歴')).toHaveAttribute('aria-current', 'page')
     expect(screen.getByText('ダッシュボード')).not.toHaveAttribute('aria-current')
   })
+
+  it('/logs/newでは記録入力のみがアクティブになりログ履歴はアクティブにならない', () => {
+    render(
+      <MemoryRouter initialEntries={['/logs/new']}>
+        <Sidebar />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText('記録入力')).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText('ログ履歴')).not.toHaveAttribute('aria-current')
+  })
 })

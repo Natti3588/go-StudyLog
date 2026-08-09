@@ -26,4 +26,15 @@ describe('BottomNav', () => {
 
     expect(screen.getByText('統計')).toHaveAttribute('aria-current', 'page')
   })
+
+  it('/logs/newでは記録のみがアクティブになり履歴はアクティブにならない', () => {
+    render(
+      <MemoryRouter initialEntries={['/logs/new']}>
+        <BottomNav />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText('記録')).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText('履歴')).not.toHaveAttribute('aria-current')
+  })
 })

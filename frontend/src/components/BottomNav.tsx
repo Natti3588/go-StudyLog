@@ -3,7 +3,7 @@ import { NavLink } from 'react-router'
 const navItems = [
   { to: '/', label: 'ホーム', end: true },
   { to: '/logs/new', label: '記録', end: false },
-  { to: '/logs', label: '履歴', end: false },
+  { to: '/logs', label: '履歴', end: true },
   { to: '/stats', label: '統計', end: false },
 ]
 

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 const navItems = [
   { to: '/', label: 'ダッシュボード', end: true },
   { to: '/logs/new', label: '記録入力', end: false },
-  { to: '/logs', label: 'ログ履歴', end: false },
+  { to: '/logs', label: 'ログ履歴', end: true },
   { to: '/stats', label: '統計', end: false },
 ]
 
