@@ -67,6 +67,7 @@ func main() {
 	mux.HandleFunc("POST /signup", authHandler.Signup)
 	mux.HandleFunc("POST /login", authHandler.Login)
 	mux.HandleFunc("POST /logout", requireAuth(authHandler.Logout))
+	mux.HandleFunc("GET /me", requireAuth(authHandler.Me))
 
 	mux.HandleFunc("GET /categories", requireAuth(categoryHandler.List))
 	mux.HandleFunc("POST /categories", requireAuth(categoryHandler.Create))

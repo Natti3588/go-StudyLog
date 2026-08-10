@@ -23,6 +23,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   })
 
   if (res.status === 401) {
+    unauthorizedHandler?.()
     throw new ApiError(401, 'unauthorized')
   }
 
@@ -36,4 +37,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   return (await res.json()) as T
+}
+
+type UnauthorizedHandler = () => void
+let unauthorizedHandler: UnauthorizedHandler | null = null
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler
 }

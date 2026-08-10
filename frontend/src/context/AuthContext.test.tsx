@@ -3,9 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuthProvider, useAuth } from './AuthContext'
 import * as authApi from '../api/auth'
-import { ApiError } from '../api/client'
+import { ApiError, setUnauthorizedHandler } from '../api/client'
 
 vi.mock('../api/auth')
+vi.mock('../api/client', async () => {
+  const actual = await vi.importActual<typeof import('../api/client')>('../api/client')
+  return { ...actual, setUnauthorizedHandler: vi.fn() }
+})
 
 function Consumer() {
   const { status, user, login } = useAuth()
@@ -22,6 +26,7 @@ describe('AuthProvider', () => {
   beforeEach(() => {
     vi.mocked(authApi.me).mockReset()
     vi.mocked(authApi.login).mockReset()
+    vi.mocked(setUnauthorizedHandler).mockClear()
   })
 
   it('起動時にGET /meが成功したらauthenticatedになる', async () => {
@@ -76,5 +81,45 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('unauthenticated'))
     await user.click(screen.getByText('login'))
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'))
+  })
+
+  it('マウント時にunauthorizedHandlerを登録する', async () => {
+    vi.mocked(authApi.me).mockResolvedValue({
+      id: '1',
+      email: 'a@example.com',
+      is_admin: false,
+      created_at: '2026-01-01T00:00:00Z',
+    })
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'))
+    expect(vi.mocked(setUnauthorizedHandler)).toHaveBeenCalledWith(expect.any(Function))
+  })
+
+  it('登録したunauthorizedHandlerを呼ぶとunauthenticatedになる', async () => {
+    vi.mocked(authApi.me).mockResolvedValue({
+      id: '1',
+      email: 'a@example.com',
+      is_admin: false,
+      created_at: '2026-01-01T00:00:00Z',
+    })
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'))
+
+    const registeredHandler = vi.mocked(setUnauthorizedHandler).mock.calls[0][0]
+    registeredHandler?.()
+
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('unauthenticated'))
   })
 })

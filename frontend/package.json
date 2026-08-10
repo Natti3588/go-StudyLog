@@ -11,7 +11,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "react": "^19.2.8",
+    "react-activity-calendar": "^3.2.1",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.85.0",
     "react-router": "^8.3.0"

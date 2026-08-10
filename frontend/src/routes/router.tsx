@@ -5,6 +5,9 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { Login } from '../pages/Login'
 import { Signup } from '../pages/Signup'
 import { Dashboard } from '../pages/Dashboard'
+import { RecordInput } from '../pages/RecordInput'
+import { LogHistory } from '../pages/LogHistory'
+import { Stats } from '../pages/Stats'
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +23,11 @@ export const router = createBrowserRouter([
         <AppLayout />
       </ProtectedRoute>
     ),
-    children: [{ path: '/', element: <Dashboard /> }],
+    children: [
+      { path: '/', element: <Dashboard /> },
+      { path: '/logs/new', element: <RecordInput /> },
+      { path: '/logs', element: <LogHistory /> },
+      { path: '/stats', element: <Stats /> },
+    ],
   },
 ])

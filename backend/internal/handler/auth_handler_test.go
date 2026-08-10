@@ -14,6 +14,7 @@ import (
 type fakeAuthServicer struct {
 	signupFunc func(ctx context.Context, email, password string) (*domain.User, error)
 	loginFunc  func(ctx context.Context, email, password string) (string, error)
+	meFunc     func(ctx context.Context, userID string) (*domain.User, error)
 }
 
 func (f *fakeAuthServicer) Signup(ctx context.Context, email, password string) (*domain.User, error) {
@@ -22,6 +23,10 @@ func (f *fakeAuthServicer) Signup(ctx context.Context, email, password string) (
 
 func (f *fakeAuthServicer) Login(ctx context.Context, email, password string) (string, error) {
 	return f.loginFunc(ctx, email, password)
+}
+
+func (f *fakeAuthServicer) Me(ctx context.Context, userID string) (*domain.User, error) {
+	return f.meFunc(ctx, userID)
 }
 
 func TestAuthHandler_Signup(t *testing.T) {
@@ -158,5 +163,47 @@ func TestAuthHandler_Logout(t *testing.T) {
 	}
 	if !found {
 		t.Error("token cookie not set for deletion")
+	}
+}
+
+func TestAuthHandler_Me(t *testing.T) {
+	tests := []struct {
+		name       string
+		meFunc     func(ctx context.Context, userID string) (*domain.User, error)
+		wantStatus int
+	}{
+		{
+			name: "正常系",
+			meFunc: func(ctx context.Context, userID string) (*domain.User, error) {
+				return &domain.User{ID: "1", Email: "a@example.com"}, nil
+			},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name: "ユーザーが存在しない",
+			meFunc: func(ctx context.Context, userID string) (*domain.User, error) {
+				return nil, domain.ErrUserNotFound
+			},
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name: "その他のserviceエラー",
+			meFunc: func(ctx context.Context, userID string) (*domain.User, error) {
+				return nil, errors.New("db error")
+			},
+			wantStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := &AuthHandler{service: &fakeAuthServicer{meFunc: tt.meFunc}}
+			req := httptest.NewRequest(http.MethodGet, "/me", nil)
+			w := httptest.NewRecorder()
+			h.Me(w, req)
+			if w.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", w.Code, tt.wantStatus)
+			}
+		})
 	}
 }

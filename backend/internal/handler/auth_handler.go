@@ -13,6 +13,7 @@ import (
 type authServicer interface {
 	Signup(ctx context.Context, email, password string) (*domain.User, error)
 	Login(ctx context.Context, email, password string) (string, error)
+	Me(ctx context.Context, userID string) (*domain.User, error)
 }
 type AuthHandler struct {
 	service      authServicer
@@ -99,4 +100,21 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	userID := UserIDFromContext(r.Context())
+
+	u, err := h.service.Me(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(u)
 }
