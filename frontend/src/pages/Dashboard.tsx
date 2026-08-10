@@ -8,15 +8,14 @@ import { setWeeklyGoal } from '../api/goals'
 import { listLogs } from '../api/logs'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
+import { localDateString } from '../lib/date'
 
 function currentWeekStart(): string {
   const now = new Date()
-  const day = now.getUTCDay()
+  const day = now.getDay()
   const diffToMonday = day === 0 ? 6 : day - 1
-  const monday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday)
-  )
-  return `${monday.toISOString().slice(0, 10)}T00:00:00Z`
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday)
+  return `${localDateString(monday)}T00:00:00Z`
 }
 
 interface GoalFormValues {

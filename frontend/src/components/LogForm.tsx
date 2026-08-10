@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { useState } from 'react'
 import type { Category } from '../types/domain'
+import { localDateString } from '../lib/date'
 
 export interface LogFormValues {
   category_id: string
@@ -16,10 +17,6 @@ interface LogFormProps {
   submitLabel: string
 }
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 export function LogForm({ categories, defaultValues, onSubmit, submitLabel }: LogFormProps) {
   const [serverError, setServerError] = useState<string | null>(null)
   const {
@@ -29,7 +26,7 @@ export function LogForm({ categories, defaultValues, onSubmit, submitLabel }: Lo
   } = useForm<LogFormValues>({
     defaultValues: defaultValues ?? {
       category_id: '',
-      studied_on: today(),
+      studied_on: localDateString(new Date()),
       duration_min: 30,
       memo: '',
     },

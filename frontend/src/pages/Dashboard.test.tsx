@@ -91,6 +91,35 @@ describe('Dashboard', () => {
     )
   })
 
+  it('UTC日曜夜(JST月曜深夜)でも週間目標の週開始日はローカル基準の月曜日になる', async () => {
+    vi.stubEnv('TZ', 'Asia/Tokyo')
+    vi.setSystemTime(new Date('2026-08-09T20:00:00Z'))
+    try {
+      vi.mocked(goalsApi.setWeeklyGoal).mockResolvedValue({
+        user_id: 'u1',
+        week_start: '2026-08-10T00:00:00Z',
+        target_min: 400,
+      })
+      const user = userEvent.setup()
+
+      renderWithProviders()
+      await screen.findByText('500分')
+      await user.click(screen.getByText('目標を変更'))
+      await user.clear(screen.getByRole('spinbutton'))
+      await user.type(screen.getByRole('spinbutton'), '400')
+      await user.click(screen.getByRole('button', { name: '保存' }))
+
+      await waitFor(() =>
+        expect(goalsApi.setWeeklyGoal).toHaveBeenCalledWith(
+          expect.objectContaining({ week_start: '2026-08-10T00:00:00Z' })
+        )
+      )
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('記録が0件のときは「まだ記録がありません」を表示する', async () => {
     vi.mocked(logsApi.listLogs).mockResolvedValue([])
 
