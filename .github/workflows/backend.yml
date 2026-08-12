@@ -1,0 +1,59 @@
+name: Backend
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/backend.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.4'
+          cache-dependency-path: backend/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2 over SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key ubuntu@"$EC2_HOST" << 'ENDSSH'
+            set -e
+            cd ~/studylog
+            git pull
+            docker compose -f docker-compose.prod.yml up --build -d
+          ENDSSH
