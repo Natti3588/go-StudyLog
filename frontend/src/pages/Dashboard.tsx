@@ -69,7 +69,7 @@ export function Dashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold text-ink mb-1">ようこそ、{user?.email}</h1>
+      <h1 className="text-xl font-bold text-ink mb-1">ようこそ！、{user?.email}</h1>
       <button onClick={() => logout()} className="text-sm text-ink-muted mb-6">
         ログアウト
       </button>
