@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { useState } from 'react'
 import { signup } from '../api/auth'
 import { ApiError } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 interface SignupFormValues {
   email: string
@@ -11,6 +12,7 @@ interface SignupFormValues {
 
 export function Signup() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
   const {
     register,
@@ -22,13 +24,21 @@ export function Signup() {
     setServerError(null)
     try {
       await signup(values.email, values.password)
-      navigate('/login')
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setServerError('このメールアドレスは既に登録されています')
         return
       }
       setServerError('エラーが発生しました。時間をおいて再度お試しください')
+      return
+    }
+
+    // POST /signup は認証Cookieを発行しないため、続けてログインしてダッシュボードへ進む
+    try {
+      await login(values.email, values.password)
+      navigate('/', { replace: true })
+    } catch {
+      navigate('/login', { replace: true })
     }
   }
 
