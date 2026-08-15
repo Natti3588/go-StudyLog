@@ -34,31 +34,26 @@ func main() {
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 	secureCookie := os.Getenv("COOKIE_SECURE") == "true"
 
-	authHandler := handler.NewAuthHandler(
-		service.NewAuthService(repository.NewUserRepository(db), jwtSecret),
-		secureCookie,
-	)
-	categoryHandler := handler.NewCategoryHandler(
-		service.NewCategoryService(repository.NewCategoryRepository(db)),
-	)
-	studyLogHandler := handler.NewStudyLogHandler(
-		service.NewStudyLogService(
-			repository.NewStudyLogRepository(db),
-			repository.NewUserStatsRepository(db),
-			db),
-	)
-	weeklyGoalHandler := handler.NewWeeklyGoalHandler(
-		service.NewWeeklyGoalService(
-			repository.NewWeeklyGoalRepository(db),
-		),
-	)
-	statsHandler := handler.NewStatsHandler(
-		service.NewStatsService(
-			repository.NewStudyLogRepository(db),
-			repository.NewUserStatsRepository(db),
-			repository.NewWeeklyGoalRepository(db),
-		),
-	)
+	// --- repository層 ---
+	userRepo := repository.NewUserRepository(db)
+	categoryRepo := repository.NewCategoryRepository(db)
+	studyLogRepo := repository.NewStudyLogRepository(db)
+	userStatsRepo := repository.NewUserStatsRepository(db)
+	weeklyGoalRepo := repository.NewWeeklyGoalRepository(db)
+
+	// --- service層 ---
+	authService := service.NewAuthService(userRepo, jwtSecret)
+	categoryService := service.NewCategoryService(categoryRepo)
+	studyLogService := service.NewStudyLogService(studyLogRepo, userStatsRepo, db)
+	weeklyGoalService := service.NewWeeklyGoalService(weeklyGoalRepo)
+	statsService := service.NewStatsService(studyLogRepo, userStatsRepo, weeklyGoalRepo)
+
+	// --- handler層 ---
+	authHandler := handler.NewAuthHandler(authService, secureCookie)
+	categoryHandler := handler.NewCategoryHandler(categoryService)
+	studyLogHandler := handler.NewStudyLogHandler(studyLogService)
+	weeklyGoalHandler := handler.NewWeeklyGoalHandler(weeklyGoalService)
+	statsHandler := handler.NewStatsHandler(statsService)
 
 	requireAuth := handler.RequireAuth(jwtSecret)
 
